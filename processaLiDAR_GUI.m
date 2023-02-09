@@ -1,0 +1,667 @@
+function varargout = processaLiDAR_GUI(varargin)
+% PROCESSALIDAR_GUI MATLAB code for processaLiDAR_GUI.fig
+%      PROCESSALIDAR_GUI, by itself, creates a new PROCESSALIDAR_GUI or raises the existing
+%      singleton*.
+%
+%      H = PROCESSALIDAR_GUI returns the handle to a new PROCESSALIDAR_GUI or the handle to
+%      the existing singleton*.
+%
+%      PROCESSALIDAR_GUI('CALLBACK',hObject,eventData,handles,...) calls the local
+%      function named CALLBACK in PROCESSALIDAR_GUI.M with the given input arguments.
+%
+%      PROCESSALIDAR_GUI('Property','Value',...) creates a new PROCESSALIDAR_GUI or raises the
+%      existing singleton*.  Starting from the left, property value pairs are
+%      applied to the GUI before processaLiDAR_GUI_OpeningFcn gets called.  An
+%      unrecognized property name or invalid value makes property application
+%      stop.  All inputs are passed to processaLiDAR_GUI_OpeningFcn via varargin.
+%
+%      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
+%      instance to run (singleton)".
+%
+% See also: GUIDE, GUIDATA, GUIHANDLES
+
+% Edit the above text to modify the response to help processaLiDAR_GUI
+
+% Last Modified by GUIDE v2.5 09-Feb-2023 17:01:35
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Autor: Moacir Wendhausen
+% Data: 08/08/2022
+% Conjunto de rotinas para tratar as nuvens de pontos do LiDAR.
+%
+% São definidas 4 rotinas:
+% 1º) Rotacionar: a nuvem de pontos poderá ser rotacionada em função dos 
+% ângulos de rotação de cada eixo coordenado. Por exemplo, o LiDAR poderá estar
+% em 90º com relação à câmera, assim, basta rotacionar o eixo Y.
+% 2º) Clusterizar: para segmentar uma região de interesse, por exemplo o plano
+% do tabuleiro de xadrez para posterior calibração cruzada LiDAR x câmera.
+% 3º) Planifica: depois de segmentada, a região de interesse poderá ser
+% planificada, no caso do tabuleiro de xadrez, por exemplo.
+% 4º) Reprojetar: significa reprojetar os potos 3D do LiDAR sobre uma imagem
+% 
+% Obs.: O frame da nuvem de pontos do LiDAR tem que ser rotacionada para ajustar ao 
+% frame da câmera. Considerar também que o LiDAR quando usado com a câmera
+% o seu frame é rotacionado de 90º, para as linhas lasers varrerem a imagem
+% verticalmente. Assim, para ajustar o frame do LiDAR ao frame da câmera, o
+% mesmo deverá ter o eixo Y rotacionado de -90º 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% Begin initialization code - DO NOT EDIT
+gui_Singleton = 1;
+gui_State = struct('gui_Name',       mfilename, ...
+                   'gui_Singleton',  gui_Singleton, ...
+                   'gui_OpeningFcn', @processaLiDAR_GUI_OpeningFcn, ...
+                   'gui_OutputFcn',  @processaLiDAR_GUI_OutputFcn, ...
+                   'gui_LayoutFcn',  [] , ...
+                   'gui_Callback',   []);
+if nargin && ischar(varargin{1})
+    gui_State.gui_Callback = str2func(varargin{1});
+end
+
+if nargout
+    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
+else
+    gui_mainfcn(gui_State, varargin{:});
+end
+% End initialization code - DO NOT EDIT
+
+
+% --- Executes just before processaLiDAR_GUI is made visible.
+function processaLiDAR_GUI_OpeningFcn(hObject, eventdata, handles, varargin)
+% This function has no output args, see OutputFcn.
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% varargin   command line arguments to processaLiDAR_GUI (see VARARGIN)
+
+%*************** Dados usuário abaixo **************************************
+% Definição de alguns nomes de folder para sereme gerados:
+handles.path.PCRotacionada= 'Rotacionada';
+handles.path.PCDenoised= 'Denoised';
+handles.path.PCSegmentada= 'Segmentada';
+handles.path.PCPlanoAdjustada= 'PlanoAjustada';
+
+handles.path.base= 'D:\Moacir\ensaios';
+
+
+%*************** Dados usuário acima **************************************
+
+% Choose default command line output for processaLiDAR_GUI
+handles.output = hObject;
+
+% Update handles structure
+guidata(hObject, handles);
+
+% UIWAIT makes processaLiDAR_GUI wait for user response (see UIRESUME)
+% uiwait(handles.figuraBase);
+
+
+% --- Outputs from this function are returned to the command line.
+function varargout = processaLiDAR_GUI_OutputFcn(hObject, eventdata, handles) 
+% varargout  cell array for returning output args (see VARARGOUT);
+% hObject    handle to figure
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Get default command line output from handles structure
+varargout{1} = handles.output;
+
+
+% --- Executes on button press in pbRotacionar.
+function pbRotacionar_Callback(hObject, eventdata, handles)
+% hObject    handle to pbRotacionar (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% ************* Rotina para rotacionar:
+% Para ajustar o frame do LiDAR ao frame da câmera, mesmo deverá ter o 
+% eixo Y rotacionado de -90º: 
+
+vetRot= handles.aditVetorRotacao.String;
+vetRot= str2num(vetRot);
+
+vetTransl= handles.editVetorTranslacao.String;
+vetTransl= str2num(vetTransl);
+
+handles.rotacionar.vetorRot= vetRot; % Define os ângulos de rotação.
+handles.rotacionar.vetorTransl= vetTransl; % Define a translação.
+
+handles.editMsg.String= 'Aguarde, rotacionando PCs...';
+
+% Chama a função de rotação da PC:
+handles= fRotacionaPC(handles);
+
+handles.editMsg.String= 'PCs rotacionadas.';
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+
+function editMatrixRotacao_Callback(hObject, eventdata, handles)
+% hObject    handle to editMatrixRotacao (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editMatrixRotacao as text
+%        str2double(get(hObject,'String')) returns contents of editMatrixRotacao as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editMatrixRotacao_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editMatrixRotacao (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function edit2_Callback(hObject, eventdata, handles)
+% hObject    handle to edit2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit2 as text
+%        str2double(get(hObject,'String')) returns contents of edit2 as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function edit2_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+function aditVetorRotacao_Callback(hObject, eventdata, handles)
+% hObject    handle to aditVetorRotacao (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of aditVetorRotacao as text
+%        str2double(get(hObject,'String')) returns contents of aditVetorRotacao as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function aditVetorRotacao_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to aditVetorRotacao (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function editVetorTranslacao_Callback(hObject, eventdata, handles)
+% hObject    handle to editVetorTranslacao (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editVetorTranslacao as text
+%        str2double(get(hObject,'String')) returns contents of editVetorTranslacao as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editVetorTranslacao_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editVetorTranslacao (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in pbSegmentar.
+function pbSegmentar_Callback(hObject, eventdata, handles)
+% hObject    handle to pbSegmentar (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+handles.editMsg.String= 'Aguarde, PCs sendo segmentadas...';
+% Chama função para segmentat as PCs:
+handles= fSegmentaPC(handles);
+
+handles.editMsg.String= handles.msg;
+
+% Atualiza handles
+guidata(hObject,handles);
+
+
+function editDistMinEntreClusters_Callback(hObject, eventdata, handles)
+% hObject    handle to editDistMinEntreClusters (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editDistMinEntreClusters as text
+%        str2double(get(hObject,'String')) returns contents of editDistMinEntreClusters as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editDistMinEntreClusters_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editDistMinEntreClusters (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function editNumMinPontosPorCluster_Callback(hObject, eventdata, handles)
+% hObject    handle to editNumMinPontosPorCluster (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editNumMinPontosPorCluster as text
+%        str2double(get(hObject,'String')) returns contents of editNumMinPontosPorCluster as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editNumMinPontosPorCluster_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editNumMinPontosPorCluster (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in pbFiltrar.
+function pbFiltrar_Callback(hObject, eventdata, handles)
+% hObject    handle to pbFiltrar (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+handles.editMsg.String= 'Aguarde, filtrando PCs...';
+
+% Chama função que faz a filtragem da PC: 
+handles= fDenoisedPC(handles);
+
+handles.editMsg.String= handles.msg;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+function editNumNeighbors_Callback(hObject, eventdata, handles)
+% hObject    handle to editNumNeighbors (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editNumNeighbors as text
+%        str2double(get(hObject,'String')) returns contents of editNumNeighbors as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editNumNeighbors_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editNumNeighbors (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function editTresholdDistanceFiltrar_Callback(hObject, eventdata, handles)
+% hObject    handle to editTresholdDistanceFiltrar (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editTresholdDistanceFiltrar as text
+%        str2double(get(hObject,'String')) returns contents of editTresholdDistanceFiltrar as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editTresholdDistanceFiltrar_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editTresholdDistanceFiltrar (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in rdSegmentarPorDistanciaEuclidiana.
+function rdSegmentarPorDistanciaEuclidiana_Callback(hObject, eventdata, handles)
+% hObject    handle to rdSegmentarPorDistanciaEuclidiana (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of rdSegmentarPorDistanciaEuclidiana
+if hObject.Value
+    handles.editDistanciaEuclidiana.Enable= 'on';
+    handles.HabSegmentarPorDistanciaEuclidiana= 1;
+else
+    handles.editDistanciaEuclidiana.Enable= 'off';    
+    handles.HabSegmentarPorDistanciaEuclidiana= 0;
+end
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+function editDistanciaEuclidiana_Callback(hObject, eventdata, handles)
+% hObject    handle to editDistanciaEuclidiana (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editDistanciaEuclidiana as text
+%        str2double(get(hObject,'String')) returns contents of editDistanciaEuclidiana as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editDistanciaEuclidiana_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editDistanciaEuclidiana (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in pbReprojetar.
+function pbReprojetar_Callback(hObject, eventdata, handles)
+% hObject    handle to pbReprojetar (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+handles.editMsg.String= 'Aguarde, eetuando reprojeção...';
+
+% Chama a função de reprojeçao dos pontos do LiDAR sobre a imagem:
+handles= fReprojetaPcSobreImagem(handles);
+
+% Atualiza o handle:
+guidata(hObject,handles);
+
+% --- Executes on button press in pbAjustarPlano.
+function pbAjustarPlano_Callback(hObject, eventdata, handles)
+% hObject    handle to pbAjustarPlano (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+handles.editMsg.String= 'Aguarde, PCs sendo plano ajustadas.';
+
+% Chama função para ajustar plano:
+handles= fAjustaPlanoPC(handles);
+
+handles.editMsg.String= handles.msg;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+function editDistanciaMaxPontoPlano_Callback(hObject, eventdata, handles)
+% hObject    handle to editDistanciaMaxPontoPlano (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editDistanciaMaxPontoPlano as text
+%        str2double(get(hObject,'String')) returns contents of editDistanciaMaxPontoPlano as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editDistanciaMaxPontoPlano_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editDistanciaMaxPontoPlano (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function editVetorDeRestricaoDeOrientacao_Callback(hObject, eventdata, handles)
+% hObject    handle to editVetorDeRestricaoDeOrientacao (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editVetorDeRestricaoDeOrientacao as text
+%        str2double(get(hObject,'String')) returns contents of editVetorDeRestricaoDeOrientacao as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editVetorDeRestricaoDeOrientacao_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editVetorDeRestricaoDeOrientacao (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function editDistanciaMaxAngularPlano_Callback(hObject, eventdata, handles)
+% hObject    handle to editDistanciaMaxAngularPlano (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of editDistanciaMaxAngularPlano as text
+%        str2double(get(hObject,'String')) returns contents of editDistanciaMaxAngularPlano as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function editDistanciaMaxAngularPlano_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editDistanciaMaxAngularPlano (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in rdUsarCalibBouguet.
+function rdUsarCalibBouguet_Callback(hObject, eventdata, handles)
+% hObject    handle to rdUsarCalibBouguet (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of rdUsarCalibBouguet
+
+
+% --- Executes on button press in pbSair.
+function pbSair_Callback(hObject, eventdata, handles)
+% hObject    handle to pbSair (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+handles.figuraBase.HandleVisibility= 'on';
+clc;
+close all;
+clear;
+
+
+% --- Executes on button press in pbViewPC.
+function pbViewPC_Callback(hObject, eventdata, handles)
+% hObject    handle to pbViewPC (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Abre janela para escolher as PC a serem rotacionadas:
+path= fullfile(handles.path.base,'*.pcd');
+[files pathBase]= uigetfile(path,'Selecione uma PC para Visualização.');
+fullPathPC= fullfile(pathBase, files);
+
+% FAz a leitura da PC:
+pc= pcread(fullPathPC);
+
+% Exine a PC lida:
+figure; 
+pcshow(pc.Location);
+
+xlabel('X (m)');
+ylabel('Y (m)');
+zlabel('Z (m)');
+
+
+% --- Executes during object creation, after setting all properties.
+function pbSegmentar_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to pbSegmentar (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+handles.HabSegmentarPorDistanciaEuclidiana= 0;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes on button press in rdExibePcSegmentada.
+function rdExibePcSegmentada_Callback(hObject, eventdata, handles)
+% hObject    handle to rdExibePcSegmentada (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of rdExibePcSegmentada
+
+if (hObject.Value)
+    handles.ExibePcSegmentada= 1;
+else
+    handles.ExibePcSegmentada= 0;
+end
+
+% Update handles structure
+guidata(hObject, handles);
+    
+
+
+% --- Executes on button press in rdSalvaPcSegmentada.
+function rdSalvaPcSegmentada_Callback(hObject, eventdata, handles)
+% hObject    handle to rdSalvaPcSegmentada (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of rdSalvaPcSegmentada
+
+if hObject.Value
+    handles.HabSavePcSegmentada= 1;
+else
+    handles.HabSavePcSegmentada= 0;
+end
+
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function rdSalvaPcSegmentada_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to rdSalvaPcSegmentada (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+handles.HabSavePcSegmentada= hObject.Value;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function rdExibePcSegmentada_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to rdExibePcSegmentada (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+handles.ExibePcSegmentada= hObject.Value;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes on button press in rdExibePcPlanoAjustada.
+function rdExibePcPlanoAjustada_Callback(hObject, eventdata, handles)
+% hObject    handle to rdExibePcPlanoAjustada (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of rdExibePcPlanoAjustada
+
+handles.ExibePcPlanoAjustada= hObject.Value;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function rdExibePcPlanoAjustada_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to rdExibePcPlanoAjustada (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+handles.ExibePcPlanoAjustada= hObject.Value;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes on button press in rdSalvaPcPlanoAjustada.
+function rdSalvaPcPlanoAjustada_Callback(hObject, eventdata, handles)
+% hObject    handle to rdSalvaPcPlanoAjustada (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of rdSalvaPcPlanoAjustada
+
+handles.HabSavePcPlanoAjustada= hObject.Value;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function rdSalvaPcPlanoAjustada_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to rdSalvaPcPlanoAjustada (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+handles.HabSavePcPlanoAjustada= hObject.Value;
+
+% Update handles structure
+guidata(hObject, handles);
+
+
+% --- Executes during object creation, after setting all properties.
+function editMsg_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to editMsg (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called

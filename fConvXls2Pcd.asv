@@ -1,0 +1,66 @@
+function fConvXls2Pcd(pcStart, pcStop)
+clear;
+clc;
+close all
+
+% Principais parâmetros.
+% N é o número de posições onde o LiDAR gerou as nuvens de pontos.
+
+pathRead= 'D:\Moacir\ensaios\2022.11.25 - LiDAR Com Interferômetro\experimento_04\csv';
+pathSave= 'D:\Moacir\ensaios\2022.11.25 - LiDAR Com Interferômetro\experimento_04\pcd';
+
+nameFolder= '2022_11_25_04_';
+nameFileRead= '2022_11_25_04_';
+nameFileSave= '2022_11_25_04_';
+
+extRead= 'csv';
+extSave= 'pcd';
+
+folderIni= 1;
+numFolders= 1;
+
+for (ctFolder= folderIni:numFolders) 
+    nameFolderAux= sprintf('%s%0.4d\\', nameFolder, (ctFolder-1)*50);
+    pathFolderRead= fullfile(pathRead,nameFolderAux);
+    pathFolderSave= fullfile(pathSave,nameFolderAux);
+    % Se o folder onde será salvo o .pcd não existir ele irá criar.
+    if (~isfolder(pathFolderSave))
+        mkdir(pathFolderSave);
+    end
+    % Verifica quantos arquivos tem para serem convertidos
+    infoFolder= dir(fullfile(pathFolderRead, '*.csv'));
+    numFiles= length(infoFolder(not([infoFolder.isdir])));
+    for (ctFile=1:numFiles)
+        if ((ctFolder-1)*50<1000)
+            nameFile= sprintf('%s%0.3d_%0.10d.%s', nameFileRead, (ctFolder-1)*50, ctFile, extRead);
+            fullPathFile = fullfile(pathFolderRead,nameFile);
+            data= load(fullPathFile);
+            % Chama funçã pra converter arqvos .xls para .pcd
+
+            % Gera nuvem de pontos a partir dos dados do arquivo ".csv".
+            pc= pointCloud(data(:,1:3),'Intensity',data(:,4));    
+            % Salva a nuvem de pontos no formato .pcd.
+            nameFile= sprintf('%s%0.4d_%0.4d.%s', nameFileSave, (ctFolder-1)*50, ctFile, extSave);
+            fullPathFile = fullfile(pathFolderSave,nameFile);
+        else
+            nameFile= sprintf('%s%0.4d_%0.10d.%s', nameFileRead, (ctFolder-1)*50, ctFile, extRead);
+            fullPathFile = fullfile(pathFolderRead,nameFile);
+            data= load(fullPathFile);
+            % Chama funçã pra converter arqvos .xls para .pcd
+
+            % Gera nuvem de pontos a partir dos dados do arquivo ".csv".
+            pc= pointCloud(data(:,1:3),'Intensity',data(:,4));    
+            % Salva a nuvem de pontos no formato .pcd.
+            nameFile= sprintf('%s%0.4d_%0.4d.%s', nameFileSave, (ctFolder-1)*50, ctFile, extSave);
+            fullPathFile = fullfile(pathFolderSave,nameFile);        
+        end
+        pcwrite(pc,fullPathFile)
+    end
+end  
+
+a=0;
+
+ 
+ 
+
+
