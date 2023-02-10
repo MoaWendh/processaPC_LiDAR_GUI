@@ -8,78 +8,31 @@ function handles= fReprojetaPcSobreImagem(handles)
 clc;
 close all;
 
-msg=sprintf('1º- Click Ok para escolher a imagem.');
-figMsg= msgbox(msg);
-uiwait(figMsg); 
+% Exibe as opções para leitura dos arquivos de imagem e uvem de pontos:
+myChoice = questdlg('Continuar com a reprojeção?', ...
+	'Confirmação de reprojeção..', ...
+	'Sim','Não','Sim');
 
-path= fullfile(handles.path.base,'*.png');
-% Abre tela para escolhar as PCs para serem filtradas:
-[nameFileImg pathToReadImg]= uigetfile(path, 'Escolhar a imagem para reprojeção.' ,'MultiSelect', 'on');
+switch myChoice
+    case 'Não'
+        return;
+    case 'Sim'
+        % Caso seja fechada a janel com o "X" a execução da função continuará
+        % normalmente.
+end    
 
-% Se a escolha do arquivo for cancelada, o programa sairá desta função
-if pathToReadImg== 0 
-    handles.msg= sprintf('Escolha da image foi cancelada.');
-    msgbox(handles.msg, 'Atenção!', 'warn');
-    return;
-end
-
-msg=sprintf('2º- Click Ok para escolher a PC para reprojeção sobre a imagem.');
-figMsg= msgbox(msg);
-uiwait(figMsg); 
-
-path= fullfile(handles.path.base,'*.pcd');
-% Abre tela para escolhar as PCs para serem filtradas:
-[nameFilePcd pathToReadPcd]= uigetfile(path, 'Escolher a PC que será reprojetada.' ,'MultiSelect', 'on');
-
-% Se a escolha do arquivo for cancelada, o programa sairá desta função
-if pathToReadPcd== 0 
-    handles.msg= sprintf('Escolha da PC foi cancelada.');
-    msgbox(handles.msg, 'Atenção!', 'warn');
-    return;
-end
-
-msg=sprintf('3º- Click Ok para escolher o arq. de calibração da câmera.');
-figMsg= msgbox(msg);
-uiwait(figMsg); 
-
-path= fullfile(handles.path.base,'*.mat');
-% Abre tela para escolhar as PCs para serem filtradas:
-[nameFileCalibCam pathToReadFileCalibCam]= uigetfile(path, 'Escolher o arq. de calibração da câmera.' ,'MultiSelect', 'on');
-
-% Se a escolha do arquivo for cancelada, o programa sairá desta função
-if pathToReadFileCalibCam== 0 
-    handles.msg= sprintf('Escolha do arq. e calibração foi cancelada.');
-    msgbox(handles.msg, 'Atenção!', 'warn');
-    return;
-end
-
-msg=sprintf('4º- Click Ok para escolher o arq. da calibração cruzada LiDARx x Câmera.');
-figMsg= msgbox(msg);
-uiwait(figMsg); 
-
-path= fullfile(handles.path.base,'*.mat');
-% Abre tela para escolhar as PCs para serem filtradas:
-[nameFileCalibaCamLidar pathToReadFileCalibaCamLidar]= uigetfile(path, 'Escolher o arq. de calibração cruzada LiDAR x Câmerada.' ,'MultiSelect', 'on');
-
-% Se a escolha do arquivo for cancelada, o programa sairá desta função
-if pathToReadFileCalibaCamLidar== 0 
-    handles.msg= sprintf('Escolha do arq. dcalibração LiDAR x Câmera foi cancelada.');
-    msgbox(handles.msg, 'Atenção!', 'warn');
-    return;
-end
-
-% Define os paths:
-fullPathFileImage= fullfile(pathToReadImg, nameFileImg);
-fullPathFilePC= fullfile(pathToReadPcd, nameFilePcd);
-fullPathFileCalibCam= fullfile(pathToReadFileCalibCam, nameFileCalibCam);
-fullPathFileCalibCamLidar= fullfile(pathToReadFileCalibaCamLidar, nameFileCalibaCamLidar);
+% Define os paths: 
+fullPathFileImage= fullfile(handles.pathToReadImgToReproj, handles.nameFileImgToReproj);
+fullPathFilePC= fullfile(handles.pathToReadPcdToReproj, handles.nameFilePcdToReproj);
+fullPathFileCalibCam= fullfile(handles.pathToReadFileCalibCam, handles.nameFileCalibCam);
+fullPathFileCalibCamLidar= fullfile(handles.pathToReadFileCalibCamLidar, handles.nameFileCalibCamLidar);
 
 % Carrega os dados de transformação LiDAR-Camera:
 load(fullPathFileCalibCamLidar);
 
 % Carrega os parâmetros de calibração da câmera:
 load(fullPathFileCalibCam);
-[filepath, name, ext] = fileparts(nameFileCalibCam);
+[filepath, name, ext] = fileparts(handles.nameFileCalibCam);
 
 % Extrai os parãmetros intrínsecos da câmera:
 intrinsics = paramsCalibrationL.Intrinsics;

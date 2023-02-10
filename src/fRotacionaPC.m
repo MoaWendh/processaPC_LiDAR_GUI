@@ -15,12 +15,14 @@ if pathToRead==0
     return;
 end
 
+handles.path.base= pathToRead;
+
 msg=sprintf('2º- Click Ok para definir o folder onde as PCs serão salvas.');
 figMsg= msgbox(msg);
 uiwait(figMsg); 
 
 % Abre tela para escolher o folder onde as PCs filtradas serão salvas:
-pathToSave= uigetdir(pathToRead, 'Escolha o folder onde as PCs serão salvas.');
+pathToSave= uigetdir(handles.path.base, 'Escolha o folder onde as PCs serão salvas.');
 
 % Se a escolha do path onde as PCs serão salvas for cancelada o programa sairá desta função
 if pathToSave==0 
@@ -28,6 +30,7 @@ if pathToSave==0
     msgbox(handles.msg, 'Atenção!', 'warn');
     return;
 end
+handles.path.base= pathToSave;
 
 fullPathToSave= fullfile(pathToSave, handles.path.PCRotacionada);
 

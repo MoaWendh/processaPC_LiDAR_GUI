@@ -1,0 +1,119 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Autor: Moacir Wendhausen
+% Data: 08/08/2022
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function handles= fReprojetaPcSobreImagem(handles)
+clc;
+close all;
+
+% Exibe as opções para leitura dos arquivos de imagem e uvem de pontos:
+myChoice = questdlg('Escolha a opção abaixo:', ...
+	'Definição de image e nuvens de pontos.', ...
+	'Definir imagem','Definir nuvem de pontos','Definir ambos','Definir ambos');
+
+switch myChoice
+    case 'Definir imagem'
+        path= fullfile(handles.path.base,'*.png');
+        % Abre tela para escolhar as PCs para serem filtradas:
+        [handles.nameFileImgToReproj handles.pathToReadImgToReproj]= uigetfile(path, 'Escolhar a imagem para reprojeção.' ,'MultiSelect', 'on');
+        
+        if ~(pathToReadPcd==) 
+            % Atualiza o path básico para facilitar a busca:
+            handles.path.base= handles.pathToReadImgToReproj;           
+        end
+    case 'Definir nuvem de pontos'
+        path= fullfile(handles.path.base,'*.pcd');
+
+        % Abre tela para escolhar as PCs para serem filtradas:
+        [handles.nameFilePcdToReproj handles.pathToReadPcdToReproj]= uigetfile(path, 'Escolher a PC que será reprojetada.' ,'MultiSelect', 'on');
+        
+        if ~(pathToReadPcd==) 
+            % Atualiza o path básico para facilitar a busca:
+            handles.path.base= handles.pathToReadImgToReproj;           
+        end
+    case 'Definir ambos'
+        msg=sprintf('1º- Click Ok para escolher a imagem.');
+        figMsg= msgbox(msg);
+        uiwait(figMsg); 
+
+        path= fullfile(handles.path.base,'*.png');
+        [handles.nameFileImgToReproj handles.pathToReadImgToReproj]= uigetfile(path, 'Escolhar a imagem para reprojeção.' ,'MultiSelect', 'on');
+
+        % Atualiza o path básico para facilitar a busca:
+        handles.path.base= handles.pathToReadImgToReproj;
+
+        msg=sprintf('2º- Click Ok para escolher a PC para reprojeção sobre a imagem.');
+        figMsg= msgbox(msg);
+        uiwait(figMsg); 
+
+        path= fullfile(handles.path.base,'*.pcd');
+
+        % Abre tela para escolhar as PCs para serem filtradas:
+        [handles.nameFilePcdToReproj handles.pathToReadPcdToReproj]= uigetfile(path, 'Escolher a PC que será reprojetada.' ,'MultiSelect', 'on');
+        handles.path.base= handles.pathToReadPcdToReproj;       
+end    
+
+        
+% Se a escolha do arquivo for cancelada, o programa sairá desta função
+if handles.pathToReadImgToReproj== 0 
+    handles.msg= sprintf('A imagem ainda está indefinida.');
+    msgbox(handles.msg, 'Atenção!', 'warn');
+    return;
+end  
+
+% Se a escolha do arquivo for cancelada, o programa sairá desta função
+if handles.pathToReadPcdToReproj== 0 
+    handles.msg= sprintf('PC ainda está indefinida.');
+    msgbox(handles.msg, 'Atenção!', 'warn');
+    return;
+end
+
+% Define os paths: 
+fullPathFileImage= fullfile(handles.pathToReadImgToReproj, handles.nameFileImgToReproj);
+fullPathFilePC= fullfile(handles.pathToReadPcdToReproj, handles.nameFilePcdToReproj);
+fullPathFileCalibCam= fullfile(handles.pathToReadFileCalibCam, handles.nameFileCalibCam);
+fullPathFileCalibCamLidar= fullfile(handles.pathToReadFileCalibCamLidar, handles.nameFileCalibCamLidar);
+
+% Carrega os dados de transformação LiDAR-Camera:
+load(fullPathFileCalibCamLidar);
+
+% Carrega os parâmetros de calibração da câmera:
+load(fullPathFileCalibCam);
+[filepath, name, ext] = fileparts(handles.nameFileCalibCam);
+
+% Extrai os parãmetros intrínsecos da câmera:
+intrinsics = paramsCalibrationL.Intrinsics;
+
+% Efetua a leitura da nuvem depontos de referência. 
+pc= pcread(fullPathFilePC);
+
+% Sub amostra a nuvem de pontos:
+pcDown = pcdownsample(pc,'gridAverage',0.01);
+
+% Faz a projeção da nuvem depontos sobre a imagem:
+% tform=invert(tform);
+imPts = projectLidarPointsOnImage(pc, intrinsics, tform);
+    
+% Carrega imagem:  
+image= imread(fullPathFileImage);
+
+% Exibe a projeção dos pontos sobre as imagens: 
+f1=figure;
+f1.WindowState='maximized';
+
+subplot(1,2,1)
+imshow(image);
+hold on;
+plot(imPts(:,1),imPts(:,2),'.','Color','g');
+hold off;
+msg= sprintf('Projeção Pontos LiDAR sobre imagem.');
+title(msg);
+
+subplot(1,2,2)
+pcshow(pc.Location);
+title('Nuvem Pontos LiDAR');
+
+end
+

@@ -24,6 +24,7 @@ if pathToRead== 0
     return;
 end
 
+handles.path.base= pathToRead;
 
 % Só abre o diaálogo para gerar o path se está função estiver habilitada. 
 % Ver a oção "Salva PC segmentada".
@@ -41,6 +42,7 @@ if (handles.HabSavePcSegmentada)
         msgbox(handles.msg, 'Atenção!', 'warn');
         return;
     end
+    handles.path.base= pathToSave;
     
     % Define o path onde serão salvas as PCs segmentadas:
     fullPathToSave= fullfile(pathToSave, handles.path.PCSegmentada); 
