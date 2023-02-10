@@ -25,6 +25,8 @@ if pathToRead== 0
     return;
 end
 
+handles.path.base= pathToRead;
+
 % Só abre o diálogo para gerar o path se está função estiver habilitada. 
 % Ver a opção "Salva PC plano ajustada" no GUI.
 if (handles.HabSavePcPlanoAjustada)
@@ -41,6 +43,8 @@ if (handles.HabSavePcPlanoAjustada)
         msgbox(handles.msg, 'Atenção!', 'warn');
         return;
     end
+    
+    handles.path.base= pathToRead;
     
     % Define o path omnde serão salvas as PCs segmentadas:
     fullPathToSave= fullfile(pathToSave, handles.path.PCPlanoAdjustada); 

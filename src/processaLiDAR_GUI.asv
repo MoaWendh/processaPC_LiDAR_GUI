@@ -841,12 +841,12 @@ path= fullfile(handles.path.base,'*.png');
 
 % Se a escolha do arquivo for cancelada, o programa sairá desta função
 if ~(handles.pathToReadImgToReproj) 
-    handles.msg= sprintf('A definição da imagem foi abortada.');
+    handles.msg= sprintf('A imagem ainda está indefinida.');
     msgbox(handles.msg, 'Atenção!', 'warn');
     handles.editMsg.String= handles.msg;
     handles.ImageToProjectOk= 0;
 else
-    handles.msg= sprintf('Foi definido o arquivo de imagem: %s.', handles.nameFileImgToReproj);
+    handles.msg= sprintf('Arquivo imagem %s definido.', handles.nameFileImgToReproj);
     handles.editMsg.String= handles.msg;
     handles.ImageToProjectOk= 1;
     handles.path.base= handles.pathToReadImgToReproj;
@@ -867,20 +867,20 @@ function pbDefinirPCToProject_Callback(hObject, eventdata, handles)
 path= fullfile(handles.path.base,'*.pcd');
 
 % Abre tela para escolhar as PCs para serem filtradas:
-[handles.nameFilePcdToReproj handles.pathToReadPcdToReproj]= uigetfile(path, 'Escolher a PC que será reprojetada sobre a imagem.' ,'MultiSelect', 'on');
+[handles.nameFilePcdToReproj handles.pathToReadPcdToReproj]= uigetfile(path, 'Escolher a PC que será reprojetada.' ,'MultiSelect', 'on');
 
 % Se a escolha do arquivo for cancelada, o programa sairá desta função
 if ~(handles.pathToReadPcdToReproj) 
-    handles.msg= sprintf('A definição da nuvem de pontos foi abortada.');
+    handles.msg= sprintf('PC ainda está indefinida.');
     msgbox(handles.msg, 'Atenção!', 'warn');
     handles.editMsg.String= handles.msg;
     handles.PcToProjectOk= 0;
 else
-    handles.msg= sprintf('Foi definido o arquivo de nuvem de pontos: %s.', handles.nameFilePcdToReproj);
+    handles.msg= sprintf('Arquivo imagem %s definido.', handles.nameFileImgToReproj);
     handles.editMsg.String= handles.msg;
     handles.PcToProjectOk= 1;
     handles.path.base= handles.pathToReadPcdToReproj;  
-    if handles.ArqCalibracaoCameraOk && handles.ArqCalibracaoCameraLidarOk && handles.ImageToProjectOk
+    if handles.ArqCalibracaoCameraOk && handles.ArqCalibracaoCameraLidarOk && handles.PcToProjectOk
         handles.pbReprojetar.Enable= 'on';
     end
 end

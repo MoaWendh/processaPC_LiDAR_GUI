@@ -18,6 +18,8 @@ if pathToRead== 0
     return;
 end
 
+handles.path.base= pathToRead; 
+
 msg=sprintf('2º- Click ok para definir o folder onde as PCs serão salvas.');
 figMsg= msgbox(msg);
 uiwait(figMsg); 
@@ -31,6 +33,8 @@ if pathToSave== 0
     msgbox(handles.msg, 'Atenção!', 'warn');
     return;
 end
+
+handles.path.base= pathToSave;
 
 fullPathToSave= fullfile(pathToSave, handles.path.PCDenoised);
 
